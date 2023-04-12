@@ -1,4 +1,4 @@
-from pybit import usdt_perpetual
+from pybit.unified_trading import HTTP
 import requests
 import time
 import pandas as pd
@@ -24,24 +24,29 @@ def get_credentials():
 def get_usdt_balances(client):
 
     try:
-        total_balance = round(client.get_wallet_balance(coin="USDT")["result"]["USDT"]["equity"])
-        available_balance = round(client.get_wallet_balance(coin="USDT")["result"]["USDT"]["available_balance"])
+        balances = client.get_wallet_balance(accountType="CONTRACT")["result"]["list"][0]["coin"]
+        usdt_balance = None
+        for balance in balances:
+            if balance["coin"] == "USDT":
+                usdt_balance = balance
 
-        print(f"total usdt balance: {total_balance} USDT")
-        print(f"available balance: {available_balance} USDT")
+        if usdt_balance is not None:
+            total_balance = round(float(usdt_balance["equity"]))
 
-        return total_balance, available_balance
+            print(f"total usdt balance: {total_balance} USDT")
+
+            return total_balance
     except:
         print("Error with requesting USDT balances")
         total_balance = None
-        available_balance = None
 
-        return total_balance, available_balance
+
+        return total_balance
 
 
 def get_usdt_tickers(client):
 
-    symbols = client.latest_information_for_symbol()["result"]
+    symbols = client.get_instruments_info(category="linear")["result"]["list"]
     tickers = {}
     for row in symbols:
         symbol = row["symbol"]
@@ -61,14 +66,13 @@ def get_usdt_tickers(client):
 
 
 def get_last_price(client, ticker):
-    ticker_data = client.latest_information_for_symbol(symbol=ticker)["result"][0]
-    last_price = float(ticker_data["last_price"])
+    ticker_data = client.get_tickers(category="linear", symbol=ticker)["result"]["list"][0]
+    last_price = float(ticker_data["lastPrice"])
     return last_price
 
 
-def get_instrument_info(ticker):
-    endpoint = "https://api.bybit.com"
-    instrument_info = requests.get(f"{endpoint}/v5/market/instruments-info", params={"symbol": ticker, "category": "linear"}).json()["result"]["list"][0]
+def get_instrument_info(client, ticker):
+    instrument_info = client.get_instruments_info(category="linear", symbol=ticker)["result"]["list"][0]
 
     min_size = float(instrument_info["lotSizeFilter"]["minOrderQty"])
     max_size = float(instrument_info["lotSizeFilter"]["maxOrderQty"])
@@ -137,14 +141,14 @@ def select_side():
 
 # ORDER/POSITION OVERVIEW FUNCTIONS
 def get_open_positions(client):
-    positions = client.my_position()["result"]
+    positions = client.get_positions(category="linear", settleCoin="USDT")["result"]["list"]
     open_positions = {}
     counter = 0
     for position in positions:
-        size = position["data"]["size"]
+        size = float(position["size"])
 
         if size > 0:
-            open_positions[counter] = position["data"]
+            open_positions[counter] = position
             counter += 1
 
     if open_positions:
@@ -157,7 +161,7 @@ def get_open_positions(client):
 def display_positions(positions):
     print("Current positions")
     positions_df = pd.DataFrame.from_dict(positions, orient="index")
-    positions_df = positions_df[["symbol", "side", "size", "position_value", "entry_price", "unrealised_pnl", "stop_loss", "take_profit"]]
+    positions_df = positions_df[["symbol", "side", "size", "positionValue", "avgPrice", "unrealisedPnl", "takeProfit", "stopLoss"]]
     print(positions_df.to_markdown())
     print("\n")
 
@@ -174,7 +178,7 @@ def market_order(client, tickers):
     error = False
     if ticker is not None and side is not None and position_size is not None:
         last_price = get_last_price(client=client, ticker=ticker)
-        max_size, min_size, decimals = get_instrument_info(ticker=ticker)
+        max_size, min_size, decimals = get_instrument_info(client=client, ticker=ticker)
 
         order_amount = 10
         seconds = 15
@@ -194,12 +198,12 @@ def market_order(client, tickers):
             print(f"total size: {total_coin_size} coins")
             print(f"executing >>> {order_size} coins | each: {second_interval} seconds")
 
-            prev_size = client.my_position(symbol=ticker)["result"][0]["size"]
+            prev_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
             open_size = 0
             while open_size < total_coin_size:
 
-                client.place_active_order(side=side, symbol=ticker, order_type="Market", qty=round(order_size, decimals), time_in_force="ImmediateOrCancel", reduce_only=False, close_on_trigger=False, position_idx=0)
-                open_size = client.my_position(symbol=ticker)["result"][0]["size"] - prev_size
+                client.place_order(category="linear", symbol=ticker, side=side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=False)
+                open_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"]) - prev_size
 
                 print(f"fast twap running >>> opened: {round(open_size, decimals)} coins | side: {side}")
                 time.sleep(second_interval)
@@ -221,7 +225,7 @@ def market_close(client):
     market close order, it uses short tvwap over 15seconds with 10 orders
     """
 
-    positions = get_open_positions(client=usdt_client)
+    positions = get_open_positions(client=bybit_client)
     display_positions(positions)
     # print("Current positions")
     # for key, position in positions.items():
@@ -236,9 +240,9 @@ def market_close(client):
         position = positions[close_id]
         ticker = position["symbol"]
         side = position["side"]
-        size = position["size"]
+        size = float(position["size"])
 
-        max_size, min_size, decimals = get_instrument_info(ticker=ticker)
+        max_size, min_size, decimals = get_instrument_info(client=client, ticker=ticker)
 
         if side == "Buy":
             reduce_side = "Sell"
@@ -252,11 +256,11 @@ def market_close(client):
             order_size = size / order_amount
             second_interval = seconds / order_amount
 
-            open_size = client.my_position(symbol=ticker)["result"][0]["size"]
+            open_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
             while open_size > 0:
 
-                client.place_active_order(side=reduce_side, symbol=ticker, order_type="Market", qty=round(order_size, decimals), time_in_force="ImmediateOrCancel", reduce_only=True, close_on_trigger=False, position_idx=0)
-                open_size = client.my_position(symbol=ticker)["result"][0]["size"]
+                client.place_order(category="linear", symbol=ticker, side=reduce_side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=True)
+                open_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
 
                 print(f"fast twap running >>> size remaining: {open_size} coins | side: {reduce_side}")
                 time.sleep(second_interval)
@@ -272,11 +276,11 @@ def market_close(client):
             order_size = size / order_amount
             second_interval = seconds / order_amount
 
-            open_size = client.my_position(symbol=ticker)["result"][0]["size"]
+            open_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
             while open_size > 0:
 
-                client.place_active_order(side=reduce_side, symbol=ticker, order_type="Market", qty=order_size, time_in_force="ImmediateOrCancel", reduce_only=True, close_on_trigger=False, position_idx=0)
-                open_size = client.my_position(symbol=ticker)["result"][0]["size"]
+                client.place_order(category="linear", symbol=ticker, side=reduce_side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=True)
+                open_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
 
                 print(f"fast twap running >>> size remaining: {open_size} coins | side: {reduce_side}")
                 time.sleep(second_interval)
@@ -292,7 +296,7 @@ def market_close(client):
 
 def basic_twap(client, tickers):
     """
-    Basic linear twap: you specify, order number, position size, duration and side, position is then opened in linear fashion with same intervals and size per interval
+    Basic linear: you specify, order number, position size, duration and side, position is then opened in linear fashion with same intervals and size per interval
 
     """
     ticker = select_ticker(tickers)
@@ -304,7 +308,7 @@ def basic_twap(client, tickers):
     error = False
     if ticker is not None and order_amount is not None and position_size is not None and twap_duration is not None and side is not None:
         last_price = get_last_price(client=client, ticker=ticker)
-        max_size, min_size, decimals = get_instrument_info(ticker=ticker)
+        max_size, min_size, decimals = get_instrument_info(client=client, ticker=ticker)
 
         seconds = twap_duration * 60
         total_coin_size = round(position_size / last_price * 0.995, decimals)
@@ -323,12 +327,12 @@ def basic_twap(client, tickers):
             print(f"total size: {total_coin_size} coins")
             print(f"executing >>> {order_size} coins | each: {second_interval} seconds")
 
-            prev_size = client.my_position(symbol=ticker)["result"][0]["size"]
+            prev_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
             open_size = 0
             while open_size < total_coin_size:
 
-                client.place_active_order(side=side, symbol=ticker, order_type="Market", qty=round(order_size, decimals), time_in_force="ImmediateOrCancel", reduce_only=False, close_on_trigger=False, position_idx=0)
-                open_size = client.my_position(symbol=ticker)["result"][0]["size"] - prev_size
+                client.place_order(category="linear", symbol=ticker, side=side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=False)
+                open_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"]) - prev_size
 
                 print(f"twap running >>> opened: {open_size} ETH | side: {side}")
                 time.sleep(second_interval)
@@ -347,11 +351,11 @@ def basic_twap(client, tickers):
 
 def basic_twap_reduce(client):
     """
-    Basic linear twap close: you specify, order number, duration and side, position is then opened in linear fashion with same intervals and size per interval
+       Basic linear close: you specify, order number, duration and side, position is then opened in linear fashion with same intervals and size per interval
 
     """
 
-    positions = get_open_positions(client=usdt_client)
+    positions = get_open_positions(client=bybit_client)
     display_positions(positions)
 
     try:
@@ -366,10 +370,10 @@ def basic_twap_reduce(client):
         position = positions[close_id]
         ticker = position["symbol"]
         side = position["side"]
-        size = position["size"]
+        size = float(position["size"])
 
         print(f"{ticker} position selected to close")
-        max_size, min_size, decimals = get_instrument_info(ticker=ticker)
+        max_size, min_size, decimals = get_instrument_info(client=client, ticker=ticker)
         seconds = twap_duration * 60
 
         if side == "Buy":
@@ -388,11 +392,11 @@ def basic_twap_reduce(client):
                 error = True
 
             if not error:
-                open_size = client.my_position(symbol=ticker)["result"][0]["size"]
+                open_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
                 while open_size > 0:
 
-                    client.place_active_order(side=reduce_side, symbol=ticker, order_type="Market", qty=round(order_size, decimals), time_in_force="ImmediateOrCancel", reduce_only=True, close_on_trigger=False, position_idx=0)
-                    open_size = client.my_position(symbol=ticker)["result"][0]["size"]
+                    client.place_order(category="linear", symbol=ticker, side=reduce_side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=True)
+                    open_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
 
                     print(f"fast twap running >>> size remaining: {open_size} coins | side: {reduce_side}")
                     time.sleep(second_interval)
@@ -408,20 +412,19 @@ def basic_twap_reduce(client):
 
 
 
-
-
 api_key, api_secret = get_credentials()
-usdt_client = usdt_perpetual.HTTP(endpoint='https://api.bybit.com', api_key=api_key, api_secret=api_secret) # personal pc
-usdt_tickers = get_usdt_tickers(usdt_client)
-open_positions = get_open_positions(client=usdt_client)
+bybit_client = HTTP(testnet=False, api_key=api_key, api_secret=api_secret)
+get_usdt_balances(bybit_client)
+usdt_tickers = get_usdt_tickers(bybit_client)
+open_positions = get_open_positions(client=bybit_client)
 display_positions(open_positions)
 
 
-# basic_twap(client=usdt_client, tickers=usdt_tickers)
-# basic_twap_reduce(client=usdt_client)
+# basic_twap(client=bybit_client, tickers=usdt_tickers)
+# basic_twap_reduce(client=bybit_client)
 
-# market_order(client=usdt_client, tickers=usdt_tickers)
-# market_close(client=usdt_client)
+# market_order(client=bybit_client, tickers=usdt_tickers)
+# market_close(client=bybit_client)
 
 
 
