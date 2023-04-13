@@ -165,12 +165,196 @@ def display_positions(positions):
     print(positions_df.to_markdown())
     print("\n")
 
+# MODIFY Functions
+
+def set_position_sl_tp(client):
+    positions = get_open_positions(client=client)
+    display_positions(positions)
+    # print("Current positions")
+    # for key, position in positions.items():
+    #     print(f"id: {key} | {position['symbol']} | entry: {position['entry_price']} | side: {position['side']} | size: {position['size']} coins | pos value: {round(position['position_value'])} usd | pnl: {round(position['unrealised_pnl'])} usd")
+
+    try:
+        modify_id = int(input("select ID of the position you wish to modify >>> "))
+    except:
+        modify_id = None
+        print("Error: ID must be number")
+
+
+    try:
+        print("What do you want to modify: 1=tp/sl, 2=tp, 3=sl")
+        modify_type = int(input("Input the modification type you want[1, 2, 3] >>>"))
+    except:
+        modify_type = None
+        print("Error: Modification type must me number")
+
+    if modify_type is not None and modify_id is not None:
+        if modify_id in positions.keys():
+
+            position = positions[modify_id]
+            ticker = position["symbol"]
+            position_side = position["side"]
+
+            takeProfit = position["takeProfit"]
+            stopLoss = position["stopLoss"]
+
+            last_price = get_last_price(client, ticker)
+            print(f"{ticker} selected to modify")
+
+            if position_side == "Buy":
+                if modify_type == 1:
+                    try:
+                        new_tp_price = int(input("new TP price >>>  "))
+                        if new_tp_price < last_price and new_tp_price != 0:
+                            print("TP price below last price, TP won't be set/changed")
+                            new_tp_price = None
+                        else:
+                            new_tp_price = str(new_tp_price)
+                            takeProfit = new_tp_price
+                    except:
+                        print("TP price should be number")
+
+                    try:
+                        new_sl_price = int(input("new SL price >>>  "))
+
+                        if new_sl_price > last_price:
+                            print("SL price above last price, SL won't be set/changed")
+                            new_sl_price = None
+                        else:
+                            new_sl_price = str(new_sl_price)
+                            stopLoss = new_sl_price
+                    except:
+                        print("SL price should be number")
+
+                    if new_tp_price is not None or new_sl_price is not None:
+                        bybit_client.set_trading_stop(category="linear", symbol=ticker, takeProfit=takeProfit, tpTriggerBy="LastPrice",stopLoss=stopLoss, slTriggerBy="LastPrice", positionIdx=0)
+                        print(f"{ticker} TP and SL modified >>> new TP: {takeProfit} | new SL: {stopLoss}")
+                    else:
+                        print("no modifications were made")
+
+                elif modify_type == 2:
+                    try:
+                        new_tp_price = int(input("new TP price >>>  "))
+                        if new_tp_price < last_price and new_tp_price != 0:
+                            print("TP price below last price, TP won't be set/changed")
+                            new_tp_price = None
+                        else:
+                            new_tp_price = str(new_tp_price)
+                            takeProfit = new_tp_price
+                    except:
+                        print("TP price should be number")
+
+                    if new_tp_price is not None:
+                        bybit_client.set_trading_stop(category="linear", symbol=ticker, takeProfit=takeProfit, tpTriggerBy="LastPrice", stopLoss=stopLoss, slTriggerBy="LastPrice", positionIdx=0)
+                        print(f"{ticker} TP modified >>> new TP: {takeProfit}")
+                    else:
+                        print("no modifications were made")
+
+                elif modify_type == 3:
+                    try:
+                        new_sl_price = int(input("new SL price >>>  "))
+
+                        if new_sl_price > last_price:
+                            print("SL price above last price, SL won't be set/changed")
+                            new_sl_price = None
+                        else:
+                            new_sl_price = str(new_sl_price)
+                            stopLoss = new_sl_price
+
+                    except:
+                        print("SL price should be number")
+
+                    if new_sl_price is not None:
+                        bybit_client.set_trading_stop(category="linear", symbol=ticker, takeProfit=takeProfit, tpTriggerBy="LastPrice", stopLoss=stopLoss, slTriggerBy="LastPrice", positionIdx=0)
+                        print(f"{ticker} SL modified >>> new TP: {stopLoss}")
+                    else:
+                        print("no modifications were made")
+
+            elif position_side == "Sell":
+                if modify_type == 1:
+                    try:
+                        new_tp_price = int(input("new TP price >>>  "))
+                        if new_tp_price > last_price:
+                            print("TP price above last price, TP won't be set/changed")
+                            new_tp_price = None
+                        else:
+                            new_tp_price = str(new_tp_price)
+                            takeProfit = new_tp_price
+                    except:
+                        print("TP price should be number")
+
+                    try:
+                        new_sl_price = int(input("new SL price >>>  "))
+
+                        if new_sl_price < last_price and new_sl_price != 0:
+                            print("SL price below last price, SL won't be set/changed")
+                            new_sl_price = None
+                        else:
+                            new_sl_price = str(new_sl_price)
+                            stopLoss = new_sl_price
+
+                    except:
+                        print("SL price should be number")
+
+                    if new_tp_price is not None or new_sl_price is not None:
+                        bybit_client.set_trading_stop(category="linear", symbol=ticker, takeProfit=takeProfit, tpTriggerBy="LastPrice", stopLoss=stopLoss, slTriggerBy="LastPrice", positionIdx=0)
+                        print(f"{ticker} TP and SL modified >>> new TP: {takeProfit} | new SL: {stopLoss}")
+                    else:
+                        print("no modifications were made")
+
+                elif modify_type == 2:
+                    try:
+                        new_tp_price = int(input("new TP price >>>  "))
+                        if new_tp_price > last_price:
+                            print("TP price above last price, TP won't be set/changed")
+                            new_tp_price = None
+                        else:
+                            new_tp_price = str(new_tp_price)
+                            takeProfit = new_tp_price
+
+                    except:
+                        print("TP price should be number")
+
+                    if new_tp_price is not None:
+                        bybit_client.set_trading_stop(category="linear", symbol=ticker, takeProfit=takeProfit, tpTriggerBy="LastPrice", stopLoss=stopLoss, slTriggerBy="LastPrice", positionIdx=0)
+                        print(f"{ticker} TP modified >>> new TP: {takeProfit}")
+                    else:
+                        print("no modifications were made")
+
+                elif modify_type == 3:
+                    try:
+                        new_sl_price = int(input("new SL price >>>  "))
+
+                        if new_sl_price < last_price and new_sl_price != 0:
+                            print("SL price below last price, SL won't be set/changed")
+                            new_sl_price = None
+                        else:
+                            new_sl_price = str(new_sl_price)
+                            stopLoss = new_sl_price
+
+                    except:
+                        print("SL price should be number")
+
+                    if new_sl_price is not None:
+                        bybit_client.set_trading_stop(category="linear", symbol=ticker, takeProfit=takeProfit, tpTriggerBy="LastPrice", stopLoss=stopLoss, slTriggerBy="LastPrice", positionIdx=0)
+                        print(f"{ticker} SL modified >>> new TP: {stopLoss}")
+                    else:
+                        print("no modifications were made")
+
+            else:
+                print("ID not found in positions")
+
+    print("stop")
+
+
 
 # ORDER EXECUTION functions
 def market_order(client, tickers):
     """
     market order, it  uses short tvwap over 15seconds with 10 orders
     """
+    print("market order")
+
     ticker = select_ticker(tickers)
     side = select_side()                # buy/sell
     position_size = select_usdt_size()  # usd amount
@@ -224,8 +408,8 @@ def market_close(client):
     """
     market close order, it uses short tvwap over 15seconds with 10 orders
     """
-
-    positions = get_open_positions(client=bybit_client)
+    print("market close")
+    positions = get_open_positions(client=client)
     display_positions(positions)
     # print("Current positions")
     # for key, position in positions.items():
@@ -299,6 +483,7 @@ def basic_twap(client, tickers):
     Basic linear: you specify, order number, position size, duration and side, position is then opened in linear fashion with same intervals and size per interval
 
     """
+    print("basic linear twap")
     ticker = select_ticker(tickers)
     order_amount = select_order_amount()   # number or orders
     position_size = select_usdt_size()  # usd amount
@@ -349,13 +534,13 @@ def basic_twap(client, tickers):
             print("Error occured")
 
 
-def basic_twap_reduce(client):
+def basic_twap_close(client):
     """
        Basic linear close: you specify, order number, duration and side, position is then opened in linear fashion with same intervals and size per interval
 
     """
-
-    positions = get_open_positions(client=bybit_client)
+    print("basic linear twap close")
+    positions = get_open_positions(client=client)
     display_positions(positions)
 
     try:
@@ -419,13 +604,10 @@ usdt_tickers = get_usdt_tickers(bybit_client)
 open_positions = get_open_positions(client=bybit_client)
 display_positions(open_positions)
 
+# set_position_sl_tp(bybit_client)
 
 # basic_twap(client=bybit_client, tickers=usdt_tickers)
-# basic_twap_reduce(client=bybit_client)
+# basic_twap_close(client=bybit_client)
 
 # market_order(client=bybit_client, tickers=usdt_tickers)
 # market_close(client=bybit_client)
-
-
-
-
