@@ -1,5 +1,4 @@
 from pybit.unified_trading import HTTP
-import requests
 import time
 import pandas as pd
 import json
@@ -19,6 +18,13 @@ def get_credentials():
         api_secret = credentials["bybit_secret_key"]
 
     return api_key, api_secret
+
+
+def auth():
+    api_key, api_secret = get_credentials()
+    bybit_client = HTTP(testnet=False, api_key=api_key, api_secret=api_secret)
+
+    return bybit_client
 
 
 def get_usdt_balances(client):
@@ -159,14 +165,26 @@ def get_open_positions(client):
 
 
 def display_positions(positions):
-    print("Current positions")
-    positions_df = pd.DataFrame.from_dict(positions, orient="index")
-    positions_df = positions_df[["symbol", "side", "size", "positionValue", "avgPrice", "unrealisedPnl", "takeProfit", "stopLoss"]]
-    print(positions_df.to_markdown())
-    print("\n")
+
+    if positions:
+        print("Current positions")
+        positions_df = pd.DataFrame.from_dict(positions, orient="index")
+        positions_df = positions_df[["symbol", "side", "size", "positionValue", "avgPrice", "unrealisedPnl", "takeProfit", "stopLoss"]]
+        print(positions_df.to_markdown())
+        print("\n")
+    else:
+        print("No open positions")
+
+
+def set_all_instruments_to_hedge_mode(usdt_tickers):
+    for key, ticker in usdt_tickers.items():
+        try:
+            bybit_client.switch_position_mode(category="linear", symbol=ticker, mode=0)
+        except:
+            pass
+
 
 # MODIFY Functions
-
 def set_position_sl_tp(client):
     positions = get_open_positions(client=client)
     display_positions(positions)
@@ -204,7 +222,7 @@ def set_position_sl_tp(client):
             if position_side == "Buy":
                 if modify_type == 1:
                     try:
-                        new_tp_price = int(input("new TP price >>>  "))
+                        new_tp_price = float(input("new TP price >>>  "))
                         if new_tp_price < last_price and new_tp_price != 0:
                             print("TP price below last price, TP won't be set/changed")
                             new_tp_price = None
@@ -215,7 +233,7 @@ def set_position_sl_tp(client):
                         print("TP price should be number")
 
                     try:
-                        new_sl_price = int(input("new SL price >>>  "))
+                        new_sl_price = float(input("new SL price >>>  "))
 
                         if new_sl_price > last_price:
                             print("SL price above last price, SL won't be set/changed")
@@ -234,7 +252,7 @@ def set_position_sl_tp(client):
 
                 elif modify_type == 2:
                     try:
-                        new_tp_price = int(input("new TP price >>>  "))
+                        new_tp_price = float(input("new TP price >>>  "))
                         if new_tp_price < last_price and new_tp_price != 0:
                             print("TP price below last price, TP won't be set/changed")
                             new_tp_price = None
@@ -252,7 +270,7 @@ def set_position_sl_tp(client):
 
                 elif modify_type == 3:
                     try:
-                        new_sl_price = int(input("new SL price >>>  "))
+                        new_sl_price = float(input("new SL price >>>  "))
 
                         if new_sl_price > last_price:
                             print("SL price above last price, SL won't be set/changed")
@@ -273,7 +291,7 @@ def set_position_sl_tp(client):
             elif position_side == "Sell":
                 if modify_type == 1:
                     try:
-                        new_tp_price = int(input("new TP price >>>  "))
+                        new_tp_price = float(input("new TP price >>>  "))
                         if new_tp_price > last_price:
                             print("TP price above last price, TP won't be set/changed")
                             new_tp_price = None
@@ -284,7 +302,7 @@ def set_position_sl_tp(client):
                         print("TP price should be number")
 
                     try:
-                        new_sl_price = int(input("new SL price >>>  "))
+                        new_sl_price = float(input("new SL price >>>  "))
 
                         if new_sl_price < last_price and new_sl_price != 0:
                             print("SL price below last price, SL won't be set/changed")
@@ -304,7 +322,7 @@ def set_position_sl_tp(client):
 
                 elif modify_type == 2:
                     try:
-                        new_tp_price = int(input("new TP price >>>  "))
+                        new_tp_price = float(input("new TP price >>>  "))
                         if new_tp_price > last_price:
                             print("TP price above last price, TP won't be set/changed")
                             new_tp_price = None
@@ -323,7 +341,7 @@ def set_position_sl_tp(client):
 
                 elif modify_type == 3:
                     try:
-                        new_sl_price = int(input("new SL price >>>  "))
+                        new_sl_price = float(input("new SL price >>>  "))
 
                         if new_sl_price < last_price and new_sl_price != 0:
                             print("SL price below last price, SL won't be set/changed")
@@ -347,13 +365,11 @@ def set_position_sl_tp(client):
     print("stop")
 
 
-
 # ORDER EXECUTION functions
 def market_order(client, tickers):
     """
     market order, it  uses short tvwap over 15seconds with 10 orders
     """
-    print("market order")
 
     ticker = select_ticker(tickers)
     side = select_side()                # buy/sell
@@ -389,7 +405,7 @@ def market_order(client, tickers):
                 client.place_order(category="linear", symbol=ticker, side=side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=False)
                 open_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"]) - prev_size
 
-                print(f"fast twap running >>> opened: {round(open_size, decimals)} coins | side: {side}")
+                print(f"fast twap running >>> opened: {round(open_size, decimals)} {ticker} | side: {side}")
                 time.sleep(second_interval)
 
                 if (open_size + order_size) > total_coin_size:
@@ -408,7 +424,6 @@ def market_close(client):
     """
     market close order, it uses short tvwap over 15seconds with 10 orders
     """
-    print("market close")
     positions = get_open_positions(client=client)
     display_positions(positions)
     # print("Current positions")
@@ -446,7 +461,7 @@ def market_close(client):
                 client.place_order(category="linear", symbol=ticker, side=reduce_side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=True)
                 open_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
 
-                print(f"fast twap running >>> size remaining: {open_size} coins | side: {reduce_side}")
+                print(f"fast twap running >>> size remaining: {open_size} {ticker} | side: {reduce_side}")
                 time.sleep(second_interval)
 
                 if (open_size - order_size) < 0:
@@ -466,7 +481,7 @@ def market_close(client):
                 client.place_order(category="linear", symbol=ticker, side=reduce_side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=True)
                 open_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
 
-                print(f"fast twap running >>> size remaining: {open_size} coins | side: {reduce_side}")
+                print(f"fast twap running >>> size remaining: {open_size} {ticker} | side: {reduce_side}")
                 time.sleep(second_interval)
 
                 if (open_size - order_size) < 0:
@@ -483,7 +498,6 @@ def basic_twap(client, tickers):
     Basic linear: you specify, order number, position size, duration and side, position is then opened in linear fashion with same intervals and size per interval
 
     """
-    print("basic linear twap")
     ticker = select_ticker(tickers)
     order_amount = select_order_amount()   # number or orders
     position_size = select_usdt_size()  # usd amount
@@ -519,7 +533,7 @@ def basic_twap(client, tickers):
                 client.place_order(category="linear", symbol=ticker, side=side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=False)
                 open_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"]) - prev_size
 
-                print(f"twap running >>> opened: {open_size} ETH | side: {side}")
+                print(f"twap running >>> opened: {open_size} {ticker} | side: {side}")
                 time.sleep(second_interval)
 
                 if (open_size + order_size) > total_coin_size:
@@ -539,7 +553,6 @@ def basic_twap_close(client):
        Basic linear close: you specify, order number, duration and side, position is then opened in linear fashion with same intervals and size per interval
 
     """
-    print("basic linear twap close")
     positions = get_open_positions(client=client)
     display_positions(positions)
 
@@ -583,7 +596,7 @@ def basic_twap_close(client):
                     client.place_order(category="linear", symbol=ticker, side=reduce_side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=True)
                     open_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
 
-                    print(f"fast twap running >>> size remaining: {open_size} coins | side: {reduce_side}")
+                    print(f"fast twap running >>> size remaining: {open_size} {ticker} | side: {reduce_side}")
                     time.sleep(second_interval)
 
                     if (open_size - order_size) < 0:
@@ -597,17 +610,19 @@ def basic_twap_close(client):
 
 
 
-api_key, api_secret = get_credentials()
-bybit_client = HTTP(testnet=False, api_key=api_key, api_secret=api_secret)
-get_usdt_balances(bybit_client)
-usdt_tickers = get_usdt_tickers(bybit_client)
-open_positions = get_open_positions(client=bybit_client)
-display_positions(open_positions)
+# bybit_client = auth()
+# get_usdt_balances(bybit_client)
+# usdt_tickers = get_usdt_tickers(bybit_client)
+# open_positions = get_open_positions(client=bybit_client)
+# display_positions(open_positions)
 
-# set_position_sl_tp(bybit_client)
+
 
 # basic_twap(client=bybit_client, tickers=usdt_tickers)
 # basic_twap_close(client=bybit_client)
-
+# set_position_sl_tp(bybit_client)
 # market_order(client=bybit_client, tickers=usdt_tickers)
 # market_close(client=bybit_client)
+
+
+
