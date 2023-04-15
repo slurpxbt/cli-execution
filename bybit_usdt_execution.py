@@ -176,10 +176,10 @@ def display_positions(positions):
         print("No open positions")
 
 
-def set_all_instruments_to_hedge_mode(usdt_tickers):
+def set_all_instruments_to_hedge_mode(usdt_tickers, client):
     for key, ticker in usdt_tickers.items():
         try:
-            bybit_client.switch_position_mode(category="linear", symbol=ticker, mode=0)
+            client.switch_position_mode(category="linear", symbol=ticker, mode=0)
         except:
             pass
 
@@ -245,7 +245,7 @@ def set_position_sl_tp(client):
                         print("SL price should be number")
 
                     if new_tp_price is not None or new_sl_price is not None:
-                        bybit_client.set_trading_stop(category="linear", symbol=ticker, takeProfit=takeProfit, tpTriggerBy="LastPrice",stopLoss=stopLoss, slTriggerBy="LastPrice", positionIdx=0)
+                        client.set_trading_stop(category="linear", symbol=ticker, takeProfit=takeProfit, tpTriggerBy="LastPrice",stopLoss=stopLoss, slTriggerBy="LastPrice", positionIdx=0)
                         print(f"{ticker} TP and SL modified >>> new TP: {takeProfit} | new SL: {stopLoss}")
                     else:
                         print("no modifications were made")
@@ -263,7 +263,7 @@ def set_position_sl_tp(client):
                         print("TP price should be number")
 
                     if new_tp_price is not None:
-                        bybit_client.set_trading_stop(category="linear", symbol=ticker, takeProfit=takeProfit, tpTriggerBy="LastPrice", stopLoss=stopLoss, slTriggerBy="LastPrice", positionIdx=0)
+                        client.set_trading_stop(category="linear", symbol=ticker, takeProfit=takeProfit, tpTriggerBy="LastPrice", stopLoss=stopLoss, slTriggerBy="LastPrice", positionIdx=0)
                         print(f"{ticker} TP modified >>> new TP: {takeProfit}")
                     else:
                         print("no modifications were made")
@@ -283,7 +283,7 @@ def set_position_sl_tp(client):
                         print("SL price should be number")
 
                     if new_sl_price is not None:
-                        bybit_client.set_trading_stop(category="linear", symbol=ticker, takeProfit=takeProfit, tpTriggerBy="LastPrice", stopLoss=stopLoss, slTriggerBy="LastPrice", positionIdx=0)
+                        client.set_trading_stop(category="linear", symbol=ticker, takeProfit=takeProfit, tpTriggerBy="LastPrice", stopLoss=stopLoss, slTriggerBy="LastPrice", positionIdx=0)
                         print(f"{ticker} SL modified >>> new TP: {stopLoss}")
                     else:
                         print("no modifications were made")
@@ -315,7 +315,7 @@ def set_position_sl_tp(client):
                         print("SL price should be number")
 
                     if new_tp_price is not None or new_sl_price is not None:
-                        bybit_client.set_trading_stop(category="linear", symbol=ticker, takeProfit=takeProfit, tpTriggerBy="LastPrice", stopLoss=stopLoss, slTriggerBy="LastPrice", positionIdx=0)
+                        client.set_trading_stop(category="linear", symbol=ticker, takeProfit=takeProfit, tpTriggerBy="LastPrice", stopLoss=stopLoss, slTriggerBy="LastPrice", positionIdx=0)
                         print(f"{ticker} TP and SL modified >>> new TP: {takeProfit} | new SL: {stopLoss}")
                     else:
                         print("no modifications were made")
@@ -334,7 +334,7 @@ def set_position_sl_tp(client):
                         print("TP price should be number")
 
                     if new_tp_price is not None:
-                        bybit_client.set_trading_stop(category="linear", symbol=ticker, takeProfit=takeProfit, tpTriggerBy="LastPrice", stopLoss=stopLoss, slTriggerBy="LastPrice", positionIdx=0)
+                        client.set_trading_stop(category="linear", symbol=ticker, takeProfit=takeProfit, tpTriggerBy="LastPrice", stopLoss=stopLoss, slTriggerBy="LastPrice", positionIdx=0)
                         print(f"{ticker} TP modified >>> new TP: {takeProfit}")
                     else:
                         print("no modifications were made")
@@ -398,12 +398,12 @@ def market_order(client, tickers):
             print(f"total size: {total_coin_size} coins")
             print(f"executing >>> {order_size} coins | each: {second_interval} seconds")
 
-            prev_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
+            prev_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
             open_size = 0
             while open_size < total_coin_size:
 
                 client.place_order(category="linear", symbol=ticker, side=side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=False)
-                open_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"]) - prev_size
+                open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"]) - prev_size
 
                 print(f"fast twap running >>> opened: {round(open_size, decimals)} {ticker} | side: {side}")
                 time.sleep(second_interval)
@@ -455,11 +455,11 @@ def market_close(client):
             order_size = size / order_amount
             second_interval = seconds / order_amount
 
-            open_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
+            open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
             while open_size > 0:
 
                 client.place_order(category="linear", symbol=ticker, side=reduce_side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=True)
-                open_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
+                open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
 
                 print(f"fast twap running >>> size remaining: {open_size} {ticker} | side: {reduce_side}")
                 time.sleep(second_interval)
@@ -475,11 +475,11 @@ def market_close(client):
             order_size = size / order_amount
             second_interval = seconds / order_amount
 
-            open_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
+            open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
             while open_size > 0:
 
                 client.place_order(category="linear", symbol=ticker, side=reduce_side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=True)
-                open_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
+                open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
 
                 print(f"fast twap running >>> size remaining: {open_size} {ticker} | side: {reduce_side}")
                 time.sleep(second_interval)
@@ -526,12 +526,12 @@ def basic_twap(client, tickers):
             print(f"total size: {total_coin_size} coins")
             print(f"executing >>> {order_size} coins | each: {second_interval} seconds")
 
-            prev_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
+            prev_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
             open_size = 0
             while open_size < total_coin_size:
 
                 client.place_order(category="linear", symbol=ticker, side=side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=False)
-                open_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"]) - prev_size
+                open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"]) - prev_size
 
                 print(f"twap running >>> opened: {open_size} {ticker} | side: {side}")
                 time.sleep(second_interval)
@@ -590,11 +590,11 @@ def basic_twap_close(client):
                 error = True
 
             if not error:
-                open_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
+                open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
                 while open_size > 0:
 
                     client.place_order(category="linear", symbol=ticker, side=reduce_side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=True)
-                    open_size = float(bybit_client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
+                    open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
 
                     print(f"fast twap running >>> size remaining: {open_size} {ticker} | side: {reduce_side}")
                     time.sleep(second_interval)
@@ -608,21 +608,6 @@ def basic_twap_close(client):
         print("Error: Wrong ID selected")
 # --------------------------------------------
 
-
-
-# bybit_client = auth()
-# get_usdt_balances(bybit_client)
-# usdt_tickers = get_usdt_tickers(bybit_client)
-# open_positions = get_open_positions(client=bybit_client)
-# display_positions(open_positions)
-
-
-
-# basic_twap(client=bybit_client, tickers=usdt_tickers)
-# basic_twap_close(client=bybit_client)
-# set_position_sl_tp(bybit_client)
-# market_order(client=bybit_client, tickers=usdt_tickers)
-# market_close(client=bybit_client)
 
 
 
