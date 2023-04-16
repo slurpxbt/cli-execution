@@ -171,7 +171,6 @@ def display_positions(positions):
         positions_df = pd.DataFrame.from_dict(positions, orient="index")
         positions_df = positions_df[["symbol", "side", "size", "positionValue", "avgPrice", "unrealisedPnl", "takeProfit", "stopLoss"]]
         print(positions_df.to_markdown())
-        print("\n")
     else:
         print("No open positions")
 
