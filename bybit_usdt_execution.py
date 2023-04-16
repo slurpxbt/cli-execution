@@ -27,7 +27,7 @@ def auth():
     return bybit_client
 
 
-def get_usdt_balances(client):
+def get_usdt_balance(client):
 
     try:
         balances = client.get_wallet_balance(accountType="CONTRACT")["result"]["list"][0]["coin"]
@@ -395,14 +395,24 @@ def market_order(client, tickers):
             print(f"total size: {total_coin_size} coins")
             print(f"executing >>> {order_size} coins | each: {second_interval} seconds")
 
-            prev_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
+            prev_position = client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]
+            prev_position_side = prev_position["side"]
+            prev_size = float(prev_position["size"])
+
             open_size = 0
             while open_size < total_coin_size:
 
                 client.place_order(category="linear", symbol=ticker, side=side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=False)
-                open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"]) - prev_size
 
-                print(f"fast twap running >>> opened: {round(open_size, decimals)} {ticker} | side: {side}")
+                if (side == "Buy" and prev_position_side == "Buy") or (side == "Sell" and prev_position_side == "Sell") or prev_position_side == "None":
+                    open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"]) - prev_size
+                elif prev_position_side == "Buy" and side == "Sell":
+                    open_size = prev_size - float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
+                elif prev_position_side == "Sell" and side == "Buy":
+                    open_size = abs(prev_size) - float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
+
+
+                print(f"fast twap running >>> opened: {round(open_size, decimals)} / {total_coin_size} {ticker} | side: {side}")
                 time.sleep(second_interval)
 
                 if (open_size + order_size) > total_coin_size:
@@ -523,14 +533,23 @@ def basic_twap(client, tickers):
             print(f"total size: {total_coin_size} coins")
             print(f"executing >>> {order_size} coins | each: {second_interval} seconds")
 
-            prev_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
+            prev_position = client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]
+            prev_position_side = prev_position["side"]
+            prev_size = float(prev_position["size"])
+
             open_size = 0
             while open_size < total_coin_size:
 
                 client.place_order(category="linear", symbol=ticker, side=side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=False)
-                open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"]) - prev_size
 
-                print(f"twap running >>> opened: {round(open_size, decimals)} {ticker} | side: {side}")
+                if (side == "Buy" and prev_position_side == "Buy") or (side == "Sell" and prev_position_side == "Sell") or prev_position_side == "None":
+                    open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"]) - prev_size
+                elif prev_position_side == "Buy" and side == "Sell":
+                    open_size = prev_size - float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
+                elif prev_position_side == "Sell" and side == "Buy":
+                    open_size = abs(prev_size) - float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
+
+                print(f"twap running >>> opened: {round(open_size, decimals)} / {total_coin_size} {ticker} | side: {side}")
                 time.sleep(second_interval)
 
                 if (open_size + order_size) > total_coin_size:
@@ -604,7 +623,4 @@ def basic_twap_close(client):
     else:
         print("Error: Wrong ID selected")
 # --------------------------------------------
-
-
-
 
