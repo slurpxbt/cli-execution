@@ -160,7 +160,6 @@ def get_open_positions(client):
     if open_positions:
         return open_positions
     else:
-        print("No open positions")
         return open_positions
 
 
@@ -392,7 +391,7 @@ def market_order(client, tickers):
             error = True
 
         if not error:
-            print(f"total size: {total_coin_size} coins")
+            print(f"total size: {position_size} usd")
             print(f"executing >>> {order_size} coins | each: {second_interval} seconds")
 
             prev_position = client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]
@@ -539,7 +538,7 @@ def basic_twap(client, tickers):
         second_interval = seconds / order_amount
 
         if not error:
-            print(f"total size: {total_coin_size} coins")
+            print(f"total size: {position_size} usd")
             print(f"executing >>> {order_size} coins | each: {second_interval} seconds")
 
             prev_position = client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]

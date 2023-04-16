@@ -225,7 +225,10 @@ def market_order(client, tickers):
 
                     print(f"fast twap running >>> Buy: {round(filled_usdt_amount, decimals)} / {total_size} usd | total avg price: {avg_fill}")
 
-                    spot_balances = float(get_spot_balances(client)["USDT"]["coin_amount"])
+                    if "USDT" in get_spot_balances(client).keys():
+                        spot_balances = float(get_spot_balances(client)["USDT"]["coin_amount"])
+                    else:
+                        spot_balances = 0
                     last_price = get_last_price(client, ticker)
 
                     if (order_size * last_price + filled_usdt_amount) > total_size:
@@ -245,7 +248,6 @@ def market_order(client, tickers):
                             break
 
                     time.sleep(second_interval)
-
 
         elif side == "Sell":
             if ticker.replace("USDT", "") in spot_positions.keys():
@@ -308,16 +310,157 @@ def market_order(client, tickers):
                     time.sleep(second_interval)
 
 
-client = auth()
-tickers = get_spot_tickers(client)
-positions = get_spot_balances(client)
-display_positions(positions)
-# ticker = select_ticker(tickers)
-# last = get_last_price(client, ticker)
-# min_notional, decimals = get_instrument_info(client, ticker)
-# get_instrument_info(client, ticker)
-# print("stop")
-market_order(client,tickers)
+def basic_twap(client, tickers):
+    """
+    Basic linear: you specify, order number, position size, duration and side, position is then opened in linear fashion with same intervals and size per interval
+    """
+
+    ticker = select_ticker(tickers)
+    order_amount = select_order_amount()  # number or orders
+    side = select_side()  # buy/sell
+    total_size = select_usdt_size()  # usd amount
+    twap_duration = select_duration()  # minutes
+
+    spot_positions = get_spot_balances(client)
+    error = False
+    if ticker is not None and side is not None and total_size is not None:
+        last_price = get_last_price(client, ticker)
+        min_notional, decimals = get_instrument_info(client, ticker)
+
+        seconds = twap_duration * 60
+        second_interval = seconds / order_amount
+
+        total_coin_size = round(total_size / last_price * 0.995, decimals)
+        order_size = round(total_coin_size / order_amount, decimals)
+        if order_size * last_price < min_notional:
+            print(f"Error: ordes size below minimum size >>> min notional is {min_notional} usd")
+            error = True
+
+        if side == "Buy":
+            if "USDT" in spot_positions.keys():
+                usdt_amount = spot_positions["USDT"]["usd_value"]
+                if usdt_amount < total_size:
+                    print("Not enough USDT for selected size")
+                    error = True
+            else:
+                error = True
+                print("No USDT available for buying")
+
+            if not error:
+
+                filled_usdt_amount = 0
+                filled_coin_amount = 0
+                fills = []
+
+                while filled_usdt_amount < total_size:
+
+                    filled_order = client.order_market_buy(symbol=ticker, quantity=order_size)
+
+                    for fill in filled_order["fills"]:
+                        fills.append(fill)
+
+                    total_qty = 0
+                    total_price_qty = 0
+                    for fill in fills:
+                        price = float(fill["price"])
+                        qty = float(fill["qty"])
+                        price_qty = price * qty
+
+                        total_qty += qty
+                        total_price_qty += price_qty
+
+                        avg_fill = round(total_price_qty / total_qty, decimals)
+
+                    filled_usdt_amount += float(filled_order["cummulativeQuoteQty"])
+                    filled_coin_amount += float(filled_order["executedQty"])
+
+                    print(f"twap running >>> Buy: {round(filled_usdt_amount, decimals)} / {total_size} usd | total avg price: {avg_fill}")
+
+                    if "USDT" in get_spot_balances(client).keys():
+                        spot_balances = float(get_spot_balances(client)["USDT"]["coin_amount"])
+                    else:
+                        spot_balances = 0
+
+                    last_price = get_last_price(client, ticker)
+                    if (order_size * last_price + filled_usdt_amount) > total_size:
+
+                        remaining_size = total_size - filled_usdt_amount
+                        if remaining_size > min_notional:
+                            order_size = round(remaining_size / last_price ,decimals)
+                        else:
+                            print(f"remaining size to low >>> unfilled size: {round(remaining_size, decimals)} usd")
+                            break
+
+                    if spot_balances < order_size:
+                        if spot_balances > min_notional:
+                            order_size = spot_balances
+                        else:
+                            print(f"remaining size to low >>> unfilled size: {round(spot_balances, decimals)} coins")
+                            break
+
+                    time.sleep(second_interval)
+
+        elif side == "Sell":
+            if ticker.replace("USDT", "") in spot_positions.keys():
+                usdt_amount = spot_positions[ticker.replace("USDT", "")]["usd_value"]
+                if usdt_amount < total_size:
+                    print("Not enough coins for selected size")
+                    error = True
+            else:
+                error = True
+                print(f"No available coins for selected ticker: {ticker}")
+
+            if not error:
+
+                filled_usdt_amount = 0
+                filled_coin_amount = 0
+                fills = []
+
+                while filled_usdt_amount < total_size:
+
+                    filled_order = client.order_market_sell(symbol=ticker, quantity=order_size)
+                    for fill in filled_order["fills"]:
+                        fills.append(fill)
+
+                    total_qty = 0
+                    total_price_qty = 0
+                    for fill in fills:
+                        price = float(fill["price"])
+                        qty = float(fill["qty"])
+                        price_qty = price * qty
+
+                        total_qty += qty
+                        total_price_qty += price_qty
+
+                        avg_fill = round(total_price_qty / total_qty, decimals)
+
+                    filled_usdt_amount += float(filled_order["cummulativeQuoteQty"])
+                    filled_coin_amount += float(filled_order["executedQty"])
+
+                    print(f"twap running >>> Sell: {round(filled_usdt_amount, decimals)} / {total_size} usd | total avg price: {avg_fill}")
+
+                    spot_balances = float(get_spot_balances(client)[ticker.replace("USDT", "")]["coin_amount"])
+
+                    last_price = get_last_price(client, ticker)
+                    if (order_size * last_price + filled_usdt_amount) > total_size:
+
+                        remaining_size = total_size - filled_usdt_amount
+                        if remaining_size > min_notional:
+                            order_size = round(remaining_size / last_price ,decimals)
+                        else:
+                            print(f"remaining size to low >>> unfilled size: {round(remaining_size, decimals)} usd")
+                            break
+
+                    if spot_balances < order_size:
+                        if spot_balances > min_notional:
+                            order_size = spot_balances
+                        else:
+                            print(f"remaining size to low >>> unfilled size: {round(spot_balances, decimals)} coins")
+                            break
+
+                    time.sleep(second_interval)
+
+
 
 
 
