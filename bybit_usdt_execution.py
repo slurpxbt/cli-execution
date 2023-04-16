@@ -397,29 +397,38 @@ def market_order(client, tickers):
 
             prev_position = client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]
             prev_position_side = prev_position["side"]
-            prev_size = float(prev_position["size"])
+            prev_size = float(prev_position["positionValue"])
+            prev_coin_size = float(prev_position["size"])
 
             open_size = 0
-            while open_size < total_coin_size:
+            coin_size = 0
+            while open_size < position_size:
 
                 client.place_order(category="linear", symbol=ticker, side=side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=False)
 
                 if (side == "Buy" and prev_position_side == "Buy") or (side == "Sell" and prev_position_side == "Sell") or prev_position_side == "None":
-                    open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"]) - prev_size
+                    position = client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]
+                    open_size = float(position["positionValue"]) - prev_size
+                    coin_size = float(position["size"]) - prev_coin_size
+
                 elif prev_position_side == "Buy" and side == "Sell":
-                    open_size = prev_size - float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
+                    position = client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]
+                    open_size = prev_size - float(position["positionValue"])
+                    coin_size = prev_coin_size - float(position["size"])
+
                 elif prev_position_side == "Sell" and side == "Buy":
-                    open_size = abs(prev_size) - float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
+                    position = client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]
+                    open_size = abs(prev_size) - float(position["positionValue"])
+                    coin_size = abs(prev_coin_size) - float(position["size"])
 
-
-                print(f"fast twap running >>> opened: {round(open_size, decimals)} / {total_coin_size} {ticker} | side: {side}")
+                print(f"fast twap running >>> opened: {round(open_size, decimals)} / {position_size} usd | side: {side}")
                 time.sleep(second_interval)
 
-                if (open_size + order_size) > total_coin_size:
-                    order_size = total_coin_size - open_size
+                if (coin_size + order_size) > total_coin_size:
+                    order_size = total_coin_size - coin_size
 
                     if order_size < min_size:
-                        print(f"remaining size to low >>> unfilled size: {order_size} coins")
+                        print(f"remaining size to low >>> unfilled size: {round(order_size, decimals)} coins")
                         break
 
             print("market order executed")
@@ -535,28 +544,38 @@ def basic_twap(client, tickers):
 
             prev_position = client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]
             prev_position_side = prev_position["side"]
-            prev_size = float(prev_position["size"])
+            prev_size = float(prev_position["positionValue"])
+            prev_coin_size = float(prev_position["size"])
 
             open_size = 0
-            while open_size < total_coin_size:
+            coin_size = 0
+            while open_size < position_size:
 
                 client.place_order(category="linear", symbol=ticker, side=side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=False)
 
                 if (side == "Buy" and prev_position_side == "Buy") or (side == "Sell" and prev_position_side == "Sell") or prev_position_side == "None":
-                    open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"]) - prev_size
-                elif prev_position_side == "Buy" and side == "Sell":
-                    open_size = prev_size - float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
-                elif prev_position_side == "Sell" and side == "Buy":
-                    open_size = abs(prev_size) - float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
+                    position = client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]
+                    open_size = float(position["positionValue"]) - prev_size
+                    coin_size = float(position["size"]) - prev_coin_size
 
-                print(f"twap running >>> opened: {round(open_size, decimals)} / {total_coin_size} {ticker} | side: {side}")
+                elif prev_position_side == "Buy" and side == "Sell":
+                    position = client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]
+                    open_size = prev_size - float(position["positionValue"])
+                    coin_size = prev_coin_size - float(position["size"])
+
+                elif prev_position_side == "Sell" and side == "Buy":
+                    position = client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]
+                    open_size = abs(prev_size) - float(position["positionValue"])
+                    coin_size = abs(prev_coin_size) - float(position["size"])
+
+                print(f"twap running >>> opened: {round(open_size, decimals)} / {position_size} usd | side: {side}")
                 time.sleep(second_interval)
 
-                if (open_size + order_size) > total_coin_size:
-                    order_size = total_coin_size - open_size
+                if (coin_size + order_size) > total_coin_size:
+                    order_size = total_coin_size - coin_size
 
                     if order_size < min_size:
-                        print(f"remaining size to low >>> unfilled size: {order_size} coins")
+                        print(f"remaining size to low >>> unfilled size: {round(order_size, decimals)}  coins")
                         break
 
             print("twap finished")
