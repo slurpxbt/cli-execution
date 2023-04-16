@@ -155,7 +155,6 @@ def get_spot_balances(client):
 def display_positions(positions):
 
     if positions:
-        print("Current positions")
         positions_df = pd.DataFrame.from_dict(positions, orient="index")
         print(positions_df.to_markdown())
     else:
@@ -179,7 +178,7 @@ def market_order(client, tickers):
         seconds = 15
         second_interval = seconds / order_amount
 
-        total_coin_size = round(total_size / last_price * 0.995, decimals)
+        total_coin_size = round(total_size / last_price, decimals)
         order_size = round(total_coin_size / order_amount, decimals)
         if order_size * last_price < min_notional:
             print(f"Error: ordes size below minimum size >>> min notional is {min_notional} usd")
@@ -288,7 +287,10 @@ def market_order(client, tickers):
 
                     print(f"fast twap running >>> Sell: {round(filled_usdt_amount, decimals)} / {total_size} usd | total avg price: {avg_fill}")
 
-                    spot_balances = float(get_spot_balances(client)[ticker.replace("USDT", "")]["coin_amount"])
+                    if ticker.replace("USDT", "") in get_spot_balances(client):
+                        spot_balances = float(get_spot_balances(client)[ticker.replace("USDT", "")]["coin_amount"])
+                    else:
+                        spot_balances = 0
 
                     last_price = get_last_price(client, ticker)
                     if (order_size * last_price + filled_usdt_amount) > total_size:
@@ -330,7 +332,7 @@ def basic_twap(client, tickers):
         seconds = twap_duration * 60
         second_interval = seconds / order_amount
 
-        total_coin_size = round(total_size / last_price * 0.995, decimals)
+        total_coin_size = round(total_size / last_price, decimals)
         order_size = round(total_coin_size / order_amount, decimals)
         if order_size * last_price < min_notional:
             print(f"Error: ordes size below minimum size >>> min notional is {min_notional} usd")
@@ -439,7 +441,10 @@ def basic_twap(client, tickers):
 
                     print(f"twap running >>> Sell: {round(filled_usdt_amount, decimals)} / {total_size} usd | total avg price: {avg_fill}")
 
-                    spot_balances = float(get_spot_balances(client)[ticker.replace("USDT", "")]["coin_amount"])
+                    if ticker.replace("USDT", "") in get_spot_balances(client):
+                        spot_balances = float(get_spot_balances(client)[ticker.replace("USDT", "")]["coin_amount"])
+                    else:
+                        spot_balances = 0
 
                     last_price = get_last_price(client, ticker)
                     if (order_size * last_price + filled_usdt_amount) > total_size:
