@@ -354,15 +354,13 @@ def set_position_sl_tp(client):
                         print("SL price should be number")
 
                     if new_sl_price is not None:
-                        bybit_client.set_trading_stop(category="linear", symbol=ticker, takeProfit=takeProfit, tpTriggerBy="LastPrice", stopLoss=stopLoss, slTriggerBy="LastPrice", positionIdx=0)
+                        client.set_trading_stop(category="linear", symbol=ticker, takeProfit=takeProfit, tpTriggerBy="LastPrice", stopLoss=stopLoss, slTriggerBy="LastPrice", positionIdx=0)
                         print(f"{ticker} SL modified >>> new TP: {stopLoss}")
                     else:
                         print("no modifications were made")
 
             else:
                 print("ID not found in positions")
-
-    print("stop")
 
 
 # ORDER EXECUTION functions
@@ -461,7 +459,7 @@ def market_close(client):
                 client.place_order(category="linear", symbol=ticker, side=reduce_side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=True)
                 open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
 
-                print(f"fast twap running >>> size remaining: {open_size} {ticker} | side: {reduce_side}")
+                print(f"fast twap running >>> size remaining: {round(open_size, decimals)} {ticker} | side: {reduce_side}")
                 time.sleep(second_interval)
 
                 if (open_size - order_size) < 0:
@@ -533,7 +531,7 @@ def basic_twap(client, tickers):
                 client.place_order(category="linear", symbol=ticker, side=side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=False)
                 open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"]) - prev_size
 
-                print(f"twap running >>> opened: {open_size} {ticker} | side: {side}")
+                print(f"twap running >>> opened: {round(open_size, decimals)} {ticker} | side: {side}")
                 time.sleep(second_interval)
 
                 if (open_size + order_size) > total_coin_size:
@@ -596,7 +594,7 @@ def basic_twap_close(client):
                     client.place_order(category="linear", symbol=ticker, side=reduce_side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=True)
                     open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
 
-                    print(f"fast twap running >>> size remaining: {open_size} {ticker} | side: {reduce_side}")
+                    print(f"fast twap running >>> size remaining: {round(open_size, decimals)} {ticker} | side: {reduce_side}")
                     time.sleep(second_interval)
 
                     if (open_size - order_size) < 0:
