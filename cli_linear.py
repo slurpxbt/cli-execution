@@ -1,5 +1,5 @@
-import bybit_usdt_execution as bybit
-import binance_spot_execution as binance_spot
+import bybit_usdt_execution_linear as bybit
+import binance_spot_execution_linear as binance_spot
 
 def binance_cli():
     client = binance_spot.auth()
