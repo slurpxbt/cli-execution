@@ -442,8 +442,12 @@ def market_order(client, ticker, side, position_size):
 
             prev_position = client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]
             prev_position_side = prev_position["side"]
-            prev_size = float(prev_position["positionValue"])
-            prev_coin_size = float(prev_position["size"])
+            if prev_position_side == "None":
+                prev_size = 0
+                prev_coin_size = 0
+            else:
+                prev_size = float(prev_position["positionValue"])
+                prev_coin_size = float(prev_position["size"])
 
             open_size = 0
             coin_size = 0
@@ -472,17 +476,24 @@ def market_order(client, ticker, side, position_size):
                     order_size = total_coin_size - coin_size
 
                     if order_size < min_size:
-                        # print(f"remaining size to low >>> unfilled size: {round(order_size, decimals)} coins")
-                        msg = f"{ticker} remaining size to low >>> unfilled size: {round(order_size, decimals)} coins"
-                        send_dis_msg(msg)
-                        break
+                        if order_size > 0:
+                            # print(f"remaining size to low >>> unfilled size: {round(order_size, decimals)} coins")
+                            msg = f"{ticker} remaining size to low >>> unfilled size: {round(order_size, decimals)} coins"
+                            send_dis_msg(msg)
+                            break
+                        else:
+                            break
 
                 time.sleep(second_interval)
 
             # print("market order executed")
-            msg = f"{ticker} market {side} executed >>> size: {open_size} || coins: {coin_size} || avg price: {position['avgPrice']} $ "
+            msg = f"{ticker} market {side} executed >>> size: {round(open_size)} || coins: {coin_size} || avg price: {position['avgPrice']} $ "
             send_dis_msg(msg)
 
+
+client = auth()
+ticker = "BTCUSDT"
+market_order(client, ticker, "Buy", 300)
 
 def market_close(client, positions, close_id):
     """
@@ -540,11 +551,12 @@ def market_close(client, positions, close_id):
             open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
             while open_size > 0:
 
-                client.place_order(category="linear", symbol=ticker, side=reduce_side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=True)
                 open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
+                if open_size > 0:
+                    client.place_order(category="linear", symbol=ticker, side=reduce_side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=True)
+                    open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
 
                 # print(f"fast twap running >>> size remaining: {open_size} {ticker} | side: {reduce_side}")
-
 
                 if (open_size - order_size) < 0:
                     order_size = open_size
@@ -592,8 +604,12 @@ def basic_twap(client, ticker, order_amount, position_size, twap_duration, side)
 
             prev_position = client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]
             prev_position_side = prev_position["side"]
-            prev_size = float(prev_position["positionValue"])
-            prev_coin_size = float(prev_position["size"])
+            if prev_position_side == "None":
+                prev_size = 0
+                prev_coin_size = 0
+            else:
+                prev_size = float(prev_position["positionValue"])
+                prev_coin_size = float(prev_position["size"])
 
             open_size = 0
             coin_size = 0
@@ -622,15 +638,18 @@ def basic_twap(client, ticker, order_amount, position_size, twap_duration, side)
                     order_size = total_coin_size - coin_size
 
                     if order_size < min_size:
-                        # print(f"remaining size to low >>> unfilled size: {round(order_size, decimals)}  coins")
-                        msg = f"{ticker} remaining size to low >>> unfilled size: {round(order_size, decimals)} coins"
-                        send_dis_msg(msg)
-                        break
+                        if order_size > 0:
+                            # print(f"remaining size to low >>> unfilled size: {round(order_size, decimals)}  coins")
+                            msg = f"{ticker} remaining size to low >>> unfilled size: {round(order_size, decimals)} coins"
+                            send_dis_msg(msg)
+                            break
+                        else:
+                            break
 
                 time.sleep(second_interval)
 
             # print("twap finished")
-            msg = f"{ticker} twap {side} executed >>> size: {open_size} || coins: {coin_size} || avg price: {position['avgPrice']} $ "
+            msg = f"{ticker} twap {side} executed >>> size: {round(open_size)} || coins: {coin_size} || avg price: {position['avgPrice']} $ "
             send_dis_msg(msg)
 
 
@@ -671,8 +690,10 @@ def basic_twap_close(client, positions, close_id, order_amount, twap_duration):
                 open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
                 while open_size > 0:
 
-                    client.place_order(category="linear", symbol=ticker, side=reduce_side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=True)
                     open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
+                    if open_size > 0:
+                        client.place_order(category="linear", symbol=ticker, side=reduce_side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=True)
+                        open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
 
                     # print(f"fast twap running >>> size remaining: {round(open_size, decimals)} {ticker} | side: {reduce_side}")
 
@@ -688,4 +709,7 @@ def basic_twap_close(client, positions, close_id, order_amount, twap_duration):
     else:
         print("Error: Wrong ID selected")
 # --------------------------------------------
+
+
+
 
