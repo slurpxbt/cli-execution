@@ -47,7 +47,8 @@ def binance_cli():
             print("Open position mode selected")
             print("Select order type:"
                   "\n 1 >> twap"
-                  "\n 2 >> market order")
+                  "\n 2 >> market order"
+                  "\n 3 >> buy/sell by account/position %")
             order_mode = int(input("input number >>> "))
             if order_mode == 1:
                 print("\n")
@@ -59,7 +60,7 @@ def binance_cli():
                 total_size = binance_spot.select_usdt_size()  # usd amount
                 twap_duration = binance_spot.select_duration()  # minutes
 
-                twap_thread = Thread(target=binance_spot.basic_twap, args=(client, ticker, order_amount, side ,total_size, twap_duration ), name=f"{connection_name}_{ticker}_{side}_{total_size}_twap").start()
+                twap_thread = Thread(target=binance_spot.basic_twap, args=(client, ticker, order_amount, side ,total_size, twap_duration ), name=f"{connection_name}_{ticker}_{side}_{total_size}_twap{twap_duration}min").start()
 
             elif order_mode == 2:
                 print("\n")
@@ -70,6 +71,34 @@ def binance_cli():
                 total_size = binance_spot.select_usdt_size()  # usd amount  (client, ticker:str, side:str, total_size:float)
 
                 market_order_thread = Thread(target=binance_spot.market_order, args=(client, ticker, side, total_size), name=f"{connection_name}_{ticker}_{side}_{total_size}_market").start()
+
+            elif order_mode == 3:
+                print("\n")
+                print("buy/sell by account/position % selected")
+                side = binance_spot.select_side()  # buy/sell
+                if side == "Buy":
+                    ticker = binance_spot.select_ticker(usdt_tickers)
+                    spot_balances = binance_spot.get_spot_balances(client)
+                    if "USDT" in spot_balances.keys():
+                        open_pct = binance_spot.select_open_pct()
+                        twap_duration = binance_spot.select_duration()
+
+                        open_by_pct_thread = Thread(target=binance_spot.open_spot_position_by_account_pct, args=(client, spot_balances, ticker, open_pct, twap_duration), name=f"{connection_name}_{ticker}_{side}_{open_pct}pct_{twap_duration}min_twap").start()
+                    else:
+                        print(f"No USDT available for Buying {ticker}")
+
+                elif side == "Sell":
+                    ticker = binance_spot.select_ticker(usdt_tickers)
+                    spot_balances = binance_spot.get_spot_balances(client)
+                    if ticker.replace("USDT", "") in spot_balances.keys():
+
+                        close_pct = binance_spot.select_close_pct()
+                        twap_duration = binance_spot.select_duration()
+
+                        close_by_pct_thread = Thread(target=binance_spot.close_spot_position_by_pct, args=(client, spot_balances, ticker, close_pct, twap_duration), name=f"{connection_name}_{ticker}_{side}_{close_pct}pct_{twap_duration}min_twap").start()
+                    else:
+                        print(f"No coins available to sell for {ticker}")
+
 
             print("\n")
         elif mode == 99:
@@ -127,7 +156,7 @@ def bybit_cli():
                 twap_duration = bybit.select_duration()  # minutes
                 side = bybit.select_side()  # buy/sell
 
-                twap_thread = Thread(target=bybit.basic_twap, args=(client, ticker, order_amount, position_size, twap_duration, side), name=f"{connection_name}_{ticker}_{side}_{position_size}_twap").start()
+                twap_thread = Thread(target=bybit.basic_twap, args=(client, ticker, order_amount, position_size, twap_duration, side), name=f"{connection_name}_{ticker}_{side}_{position_size}_twap{twap_duration}min").start()
 
             elif order_mode == 2:
                 print("market order mode selected")
@@ -154,7 +183,7 @@ def bybit_cli():
                 order_amount = bybit.select_order_amount()  # number or orders
                 twap_duration = bybit.select_duration()  # minutes  (client, positions, close_id, order_amount:int, twap_duration:int)
 
-                twap_close_thread = Thread(target=bybit.basic_twap_close, args=(client, positions, close_id, order_amount, twap_duration), name=f"{connection_name}_CLOSE_{ticker}_{side}_twap").start()
+                twap_close_thread = Thread(target=bybit.basic_twap_close, args=(client, positions, close_id, order_amount, twap_duration), name=f"{connection_name}_CLOSE_{ticker}_{side}_twap{twap_duration}min").start()
 
 
             elif order_mode == 2:
