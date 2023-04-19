@@ -396,8 +396,12 @@ def market_order(client, tickers):
 
             prev_position = client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]
             prev_position_side = prev_position["side"]
-            prev_size = float(prev_position["positionValue"])
-            prev_coin_size = float(prev_position["size"])
+            if prev_position_side == "None":
+                prev_size = 0
+                prev_coin_size = 0
+            else:
+                prev_size = float(prev_position["positionValue"])
+                prev_coin_size = float(prev_position["size"])
 
             open_size = 0
             coin_size = 0
@@ -543,8 +547,12 @@ def basic_twap(client, tickers):
 
             prev_position = client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]
             prev_position_side = prev_position["side"]
-            prev_size = float(prev_position["positionValue"])
-            prev_coin_size = float(prev_position["size"])
+            if prev_position_side == "None":
+                prev_size = 0
+                prev_coin_size = 0
+            else:
+                prev_size = float(prev_position["positionValue"])
+                prev_coin_size = float(prev_position["size"])
 
             open_size = 0
             coin_size = 0
