@@ -576,15 +576,19 @@ def close_spot_position_by_pct(client, spot_balances, ticker, close_pct ,twap_du
     pct = close_pct / 100
     total_coin_size = round(coin_amount * pct, decimals)
     min_order_size = round(min_notional / last_price * 0.99, decimals)
-    order_size = round((min_notional / last_price * 10), decimals)       # generic order size, usually around 7-10$
+    order_size = round((min_notional / last_price * 10), decimals)
+
+    seconds = twap_duration * 60
+    order_amount = round(total_coin_size / order_size)
+    second_interval = seconds / order_amount
+
+    if second_interval < 1:
+        order_amount = seconds
+        second_interval = 1
+        order_size = round(total_coin_size / order_amount, decimals)
 
     if order_size * 2 > (total_coin_size * 0.99):
         order_size = round(order_size / 2, decimals)
-
-    seconds = twap_duration * 60
-
-    order_amount = round(total_coin_size / order_size)
-    second_interval = seconds / order_amount
 
     filled_usdt_amount = 0
     filled_coin_amount = 0
@@ -667,15 +671,22 @@ def open_spot_position_by_account_pct(client, spot_balances, ticker, open_pct ,t
     min_order_size = round(min_notional / last_price * 0.99, decimals)
 
     order_size_usd = min_notional * 10
-    order_size = round((min_notional / last_price * 10), decimals)  # generic order size, usually around 7-10$
+    order_size = round((min_notional / last_price * 10), decimals)
+
+    order_amount = round((total_usdt_size / last_price) / order_size)
+
+    seconds = twap_duration * 60
+    second_interval = seconds / order_amount
+
+    if second_interval < 1:
+        order_amount = seconds
+        second_interval = 1
+
+        order_size_usd = round(total_usdt_size / order_amount,1)
+        order_size = round((order_size_usd / last_price), decimals)
 
     if order_size * last_price * 2 > (total_usdt_size * 0.99):
         order_size = round(order_size / 2, decimals)
-
-    seconds = twap_duration * 60
-
-    order_amount = round((total_usdt_size / last_price) / order_size)
-    second_interval = seconds / order_amount
 
     filled_usdt_amount = 0
     filled_coin_amount = 0
