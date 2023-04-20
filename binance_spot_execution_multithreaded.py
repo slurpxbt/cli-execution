@@ -156,10 +156,17 @@ def get_last_price(client, ticker):
 def get_instrument_info(client, ticker):
     instrument_info = client.get_symbol_info(ticker)
 
-    min_notional = float(instrument_info["filters"][2]["minNotional"])
-    min_qty = decimal.Decimal(instrument_info["filters"][1]["minQty"]).normalize()
+    min_notional = None
+    decimals = None
+    min_qty = None
+    for row in instrument_info["filters"]:
+        if row["filterType"] == "NOTIONAL":
+            min_notional = float(row["minNotional"])
+        elif row["filterType"] == "LOT_SIZE":
 
-    decimals = abs(min_qty.as_tuple().exponent)
+            min_qty = decimal.Decimal(row["minQty"]).normalize()
+            decimals = abs(min_qty.as_tuple().exponent)
+
     return min_notional, decimals, float(min_qty)
 
 
@@ -243,7 +250,7 @@ def market_order(client, ticker, side, total_size):
                 fills = []
 
                 while filled_usdt_amount < total_size:
-
+                    loop_start = time.time()
                     filled_order = client.order_market_buy(symbol=ticker, quantity=order_size)
 
                     for fill in filled_order["fills"]:
@@ -292,7 +299,12 @@ def market_order(client, ticker, side, total_size):
                             send_dis_msg(msg)
                             break
 
-                    time.sleep(second_interval)
+                    loop_end = time.time()
+                    if loop_end - loop_start > second_interval:
+                        pass
+                    else:
+                        interval = second_interval - (loop_end - loop_start)
+                        time.sleep(interval)
 
                 msg = f"{ticker} market BUY order executed >>> size: {round(filled_usdt_amount)} || coins: {round(filled_coin_amount, decimals)} || avg price: {avg_fill} $ "
                 send_dis_msg(msg)
@@ -314,7 +326,7 @@ def market_order(client, ticker, side, total_size):
                 fills = []
 
                 while filled_usdt_amount < total_size:
-
+                    loop_start = time.time()
                     filled_order = client.order_market_sell(symbol=ticker, quantity=order_size)
                     for fill in filled_order["fills"]:
                         fills.append(fill)
@@ -362,7 +374,12 @@ def market_order(client, ticker, side, total_size):
                             send_dis_msg(msg)
                             break
 
-                    time.sleep(second_interval)
+                    loop_end = time.time()
+                    if loop_end - loop_start > second_interval:
+                        pass
+                    else:
+                        interval = second_interval - (loop_end - loop_start)
+                        time.sleep(interval)
 
                 msg = f"{ticker} market SELL order executed >>> size: {round(filled_usdt_amount)} $ || coins: {round(filled_coin_amount, decimals)} || avg price: {avg_fill} $ "
                 send_dis_msg(msg)
@@ -408,7 +425,7 @@ def basic_twap(client, ticker, order_amount, side, total_size, twap_duration):
                 fills = []
 
                 while filled_usdt_amount < total_size:
-
+                    loop_start = time.time()
                     filled_order = client.order_market_buy(symbol=ticker, quantity=order_size)
 
                     for fill in filled_order["fills"]:
@@ -457,7 +474,12 @@ def basic_twap(client, ticker, order_amount, side, total_size, twap_duration):
                             send_dis_msg(msg)
                             break
 
-                    time.sleep(second_interval)
+                    loop_end = time.time()
+                    if loop_end - loop_start > second_interval:
+                        pass
+                    else:
+                        interval = second_interval - (loop_end - loop_start)
+                        time.sleep(interval)
 
                 msg = f"{ticker} twap BUY order executed >>> size: {round(filled_usdt_amount)} usd || coins: {round(filled_coin_amount, decimals)} || avg price: {avg_fill} $ "
                 send_dis_msg(msg)
@@ -479,7 +501,7 @@ def basic_twap(client, ticker, order_amount, side, total_size, twap_duration):
                 fills = []
 
                 while filled_usdt_amount < total_size:
-
+                    loop_start = time.time()
                     filled_order = client.order_market_sell(symbol=ticker, quantity=order_size)
                     for fill in filled_order["fills"]:
                         fills.append(fill)
@@ -527,7 +549,12 @@ def basic_twap(client, ticker, order_amount, side, total_size, twap_duration):
                             send_dis_msg(msg)
                             break
 
-                    time.sleep(second_interval)
+                    loop_end = time.time()
+                    if loop_end - loop_start > second_interval:
+                        pass
+                    else:
+                        interval = second_interval - (loop_end - loop_start)
+                        time.sleep(interval)
 
                 msg = f"{ticker} twap SELL order executed >>> size: {round(filled_usdt_amount)} || coins: {round(filled_coin_amount, decimals)} || avg price: {avg_fill} $ "
                 send_dis_msg(msg)
@@ -571,7 +598,7 @@ def close_spot_position_by_pct(client, spot_balances, ticker, close_pct ,twap_du
     send_dis_msg(msg)
     break_ = False
     while filled_coin_amount < total_coin_size:
-
+        loop_start = time.time()
         filled_order = client.order_market_sell(symbol=ticker, quantity=order_size)
         for fill in filled_order["fills"]:
             fills.append(fill)
@@ -609,7 +636,12 @@ def close_spot_position_by_pct(client, spot_balances, ticker, close_pct ,twap_du
             order_size = round(spot_balance * 0.985, decimals)
             break_ = True
 
-        time.sleep(second_interval)
+        loop_end = time.time()
+        if loop_end - loop_start > second_interval:
+            pass
+        else:
+            interval = second_interval - (loop_end - loop_start)
+            time.sleep(interval)
 
     msg = f"{ticker} twap Sell {close_pct} % >>> size: {round(filled_usdt_amount)} || coins: {round(filled_coin_amount, decimals)} || avg price: {avg_fill} $ "
     send_dis_msg(msg)
@@ -658,6 +690,8 @@ def open_spot_position_by_account_pct(client, spot_balances, ticker, open_pct ,t
     break_ = False
     while filled_usdt_amount < total_usdt_size:
 
+        loop_start = time.time()
+
         filled_order = client.order_market_buy(symbol=ticker, quantity=order_size)
         for fill in filled_order["fills"]:
             fills.append(fill)
@@ -699,7 +733,13 @@ def open_spot_position_by_account_pct(client, spot_balances, ticker, open_pct ,t
             else:
                 break
 
-        time.sleep(second_interval)
+
+        loop_end = time.time()
+        if loop_end - loop_start > second_interval:
+            pass
+        else:
+            interval = second_interval - (loop_end - loop_start)
+            time.sleep(interval)
 
     msg = f"{ticker} twap Buy {open_pct} % >>> size: {round(filled_usdt_amount)} || coins: {round(filled_coin_amount, decimals)} || avg price: {avg_fill} $ "
     send_dis_msg(msg)
