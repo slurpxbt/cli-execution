@@ -634,7 +634,7 @@ def open_spot_position_by_account_pct(client, spot_balances, ticker, open_pct ,t
     total_usdt_size = round(coin_amount * pct, decimals)
     min_order_size = round(min_notional / last_price * 0.99, decimals)
 
-    order_size_usd = min_order_size * 10
+    order_size_usd = min_notional * 10
     order_size = round((min_notional / last_price * 10), decimals)  # generic order size, usually around 7-10$
 
     if order_size * last_price * 2 > (total_usdt_size * 0.99):
@@ -686,17 +686,21 @@ def open_spot_position_by_account_pct(client, spot_balances, ticker, open_pct ,t
         else:
             spot_balance = 0
 
-        if (total_usdt_size - filled_coin_amount) < order_size_usd:
+        if (total_usdt_size - filled_usdt_amount) < order_size_usd:
             last_price = get_last_price(client, ticker)
-            order_size = round((total_usdt_size - filled_usdt_amount) / last_price, decimals)
+            order_size = round((total_usdt_size - filled_usdt_amount) / last_price , decimals)
             if (total_usdt_size - filled_usdt_amount) < min_notional:
                 break
 
-        if (spot_balance - order_size - min_order_size) < min_order_size and spot_balance != 0:
-            order_size = round(spot_balance * 0.985, decimals)
-            break_ = True
+        if (spot_balance - order_size_usd - min_notional) < min_notional:
+            if spot_balance != 0:
+                order_size = round(spot_balance / last_price * 0.985, decimals)
+                break_ = True
+            else:
+                break
 
         time.sleep(second_interval)
 
     msg = f"{ticker} twap Buy {open_pct} % >>> size: {round(filled_usdt_amount)} || coins: {round(filled_coin_amount, decimals)} || avg price: {avg_fill} $ "
     send_dis_msg(msg)
+
