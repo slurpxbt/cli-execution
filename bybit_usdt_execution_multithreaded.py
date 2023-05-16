@@ -222,6 +222,7 @@ def display_positions(positions):
         print("No open positions")
     print("\n")
 
+
 def set_all_instruments_to_hedge_mode(usdt_tickers, client):
     for key, ticker in usdt_tickers.items():
         try:
@@ -452,7 +453,7 @@ def market_order(client, ticker, side, position_size):
             open_size = 0
             coin_size = 0
             while open_size < position_size:
-
+                loop_start = time.time()
                 client.place_order(category="linear", symbol=ticker, side=side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=False)
 
                 if (side == "Buy" and prev_position_side == "Buy") or (side == "Sell" and prev_position_side == "Sell") or prev_position_side == "None":
@@ -484,16 +485,17 @@ def market_order(client, ticker, side, position_size):
                         else:
                             break
 
-                time.sleep(second_interval)
+                loop_end = time.time()
+                if loop_end - loop_start > second_interval:
+                    pass
+                else:
+                    interval = second_interval - (loop_end - loop_start)
+                    time.sleep(interval)
 
             # print("market order executed")
             msg = f"{ticker} market {side} executed >>> size: {round(open_size)} || coins: {coin_size} || avg price: {position['avgPrice']} $ "
             send_dis_msg(msg)
 
-
-client = auth()
-ticker = "BTCUSDT"
-market_order(client, ticker, "Buy", 300)
 
 def market_close(client, positions, close_id):
     """
@@ -550,7 +552,7 @@ def market_close(client, positions, close_id):
 
             open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
             while open_size > 0:
-
+                loop_start = time.time()
                 open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
                 if open_size > 0:
                     client.place_order(category="linear", symbol=ticker, side=reduce_side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=True)
@@ -561,7 +563,12 @@ def market_close(client, positions, close_id):
                 if (open_size - order_size) < 0:
                     order_size = open_size
 
-                time.sleep(second_interval)
+                loop_end = time.time()
+                if loop_end - loop_start > second_interval:
+                    pass
+                else:
+                    interval = second_interval - (loop_end - loop_start)
+                    time.sleep(interval)
 
             # print("market order executed")
             msg = f"{ticker} {position['side']} market close executed"
@@ -614,7 +621,7 @@ def basic_twap(client, ticker, order_amount, position_size, twap_duration, side)
             open_size = 0
             coin_size = 0
             while open_size < position_size:
-
+                loop_start = time.time()
                 client.place_order(category="linear", symbol=ticker, side=side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=False)
 
                 if (side == "Buy" and prev_position_side == "Buy") or (side == "Sell" and prev_position_side == "Sell") or prev_position_side == "None":
@@ -646,7 +653,12 @@ def basic_twap(client, ticker, order_amount, position_size, twap_duration, side)
                         else:
                             break
 
-                time.sleep(second_interval)
+                loop_end = time.time()
+                if loop_end - loop_start > second_interval:
+                    pass
+                else:
+                    interval = second_interval - (loop_end - loop_start)
+                    time.sleep(interval)
 
             # print("twap finished")
             msg = f"{ticker} twap {side} executed >>> size: {round(open_size)} || coins: {coin_size} || avg price: {position['avgPrice']} $ "
@@ -689,7 +701,7 @@ def basic_twap_close(client, positions, close_id, order_amount, twap_duration):
 
                 open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
                 while open_size > 0:
-
+                    loop_start = time.time()
                     open_size = float(client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]["size"])
                     if open_size > 0:
                         client.place_order(category="linear", symbol=ticker, side=reduce_side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=True)
@@ -700,7 +712,12 @@ def basic_twap_close(client, positions, close_id, order_amount, twap_duration):
                     if (open_size - order_size) < 0:
                         order_size = open_size
 
-                    time.sleep(second_interval)
+                    loop_end = time.time()
+                    if loop_end - loop_start > second_interval:
+                        pass
+                    else:
+                        interval = second_interval - (loop_end - loop_start)
+                        time.sleep(interval)
 
                 # print("twap finished")
                 msg = f"{ticker} {position['side']} twap close executed "
