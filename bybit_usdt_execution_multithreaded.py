@@ -443,7 +443,7 @@ def market_order(client, ticker, side, position_size):
 
             prev_position = client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]
             prev_position_side = prev_position["side"]
-            if prev_position_side == "None":
+            if prev_position_side == "":
                 prev_size = 0
                 prev_coin_size = 0
             else:
@@ -611,7 +611,7 @@ def basic_twap(client, ticker, order_amount, position_size, twap_duration, side)
 
             prev_position = client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]
             prev_position_side = prev_position["side"]
-            if prev_position_side == "None":
+            if prev_position_side == "":
                 prev_size = 0
                 prev_coin_size = 0
             else:
