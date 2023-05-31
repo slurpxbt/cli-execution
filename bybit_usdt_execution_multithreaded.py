@@ -456,7 +456,7 @@ def market_order(client, ticker, side, position_size):
                 loop_start = time.time()
                 client.place_order(category="linear", symbol=ticker, side=side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=False)
 
-                if (side == "Buy" and prev_position_side == "Buy") or (side == "Sell" and prev_position_side == "Sell") or prev_position_side == "None":
+                if (side == "Buy" and prev_position_side == "Buy") or (side == "Sell" and prev_position_side == "Sell") or prev_position_side == "":
                     position = client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]
                     open_size = float(position["positionValue"]) - prev_size
                     coin_size = float(position["size"]) - prev_coin_size
@@ -624,7 +624,7 @@ def basic_twap(client, ticker, order_amount, position_size, twap_duration, side)
                 loop_start = time.time()
                 client.place_order(category="linear", symbol=ticker, side=side, orderType="Market", qty=round(order_size, decimals), timeInForce="IOC", reduceOnly=False)
 
-                if (side == "Buy" and prev_position_side == "Buy") or (side == "Sell" and prev_position_side == "Sell") or prev_position_side == "None":
+                if (side == "Buy" and prev_position_side == "Buy") or (side == "Sell" and prev_position_side == "Sell") or prev_position_side == "":
                     position = client.get_positions(category="linear", symbol=ticker)["result"]["list"][0]
                     open_size = float(position["positionValue"]) - prev_size
                     coin_size = float(position["size"]) - prev_coin_size
