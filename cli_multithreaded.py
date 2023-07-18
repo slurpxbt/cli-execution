@@ -145,7 +145,9 @@ def bybit_cli():
             print("Open position mode selected")
             print("Select order type:"
                   "\n 1 >> twap"
-                  "\n 2 >> market order")
+                  "\n 2 >> market order"
+                  "\n 3 >> pair trade 1/1 weighted")
+
             order_mode = int(input("input number >>> "))
             if order_mode == 1:
                 print("twap mode selected")
@@ -166,6 +168,23 @@ def bybit_cli():
                 position_size = bybit.select_usdt_size()  # usd amount
 
                 market_order_thread = Thread(target=bybit.market_order, args=(client, ticker, side, position_size), name=f"{connection_name}_{ticker}_{side}_{position_size}_market").start()
+
+            elif order_mode == 3:
+                print("pair trade mode selected [using twap]\n")
+
+                position_size = bybit.select_usdt_size()  # usd amount
+                order_amount = bybit.select_order_amount()  # number or orders
+                twap_duration = bybit.select_duration()  # minutes
+
+                print("\nSelect Long leg of the pair trade")
+                ticker_long = bybit.select_ticker(usdt_tickers)
+                print("\nSelect Short leg of the pair trade")
+                ticker_short = bybit.select_ticker(usdt_tickers)
+
+                side_short = "Sell"
+                side_long = "Buy"
+                twap_thread = Thread(target=bybit.basic_twap, args=(client, ticker_long, order_amount, position_size, twap_duration, side_long), name=f"{connection_name}_{ticker_long}_{side_long}_{position_size}_twap{twap_duration}min").start()
+                twap_thread = Thread(target=bybit.basic_twap, args=(client, ticker_short, order_amount, position_size, twap_duration, side_short), name=f"{connection_name}_{ticker_short}_{side_short}_{position_size}_twap{twap_duration}min").start()
 
             print("\n")
         elif mode == 3:
